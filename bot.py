@@ -1,4 +1,3 @@
-import asyncio
 import aiogram
 from aiogram import Dispatcher
 from aiogram.types import Message
@@ -28,7 +27,7 @@ async def main(dp: Dispatcher):
             caption=text
         )
         logging.info("Send first message")
-        scheduler.add_job(update_currency, "interval", seconds=15, kwargs={"message": msg})
+        scheduler.add_job(update_currency, "interval", minutes=15, kwargs={"message": msg})
 
 
 async def update_currency(message: Message):
