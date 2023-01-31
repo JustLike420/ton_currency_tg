@@ -1,8 +1,6 @@
 import aiogram
 from aiogram import Dispatcher
 from aiogram.types import Message
-from aiogram.utils.exceptions import MessageNotModified
-
 from parser import Parser
 from apscheduler.schedulers.asyncio import AsyncIOScheduler
 import logging
@@ -18,25 +16,33 @@ dp = Dispatcher(bot)
 scheduler = AsyncIOScheduler()
 
 
-async def main(dp: Dispatcher):
-    text = await Parser().runner()
+async def send_ton_message(text: str) -> Message:
     with open("standard.gif", 'rb') as gif_file:
         msg = await bot.send_animation(
             TG_CHAT,
             gif_file,
             caption=text
         )
-        logging.info("Send first message")
-        scheduler.add_job(update_currency, "interval", minutes=15, kwargs={"message": msg})
+    return msg
 
 
-async def update_currency(message: Message):
-    new_message = await Parser().runner()
+async def main(dp: Dispatcher):
+    global msg
+    text = await Parser().runner()
+    msg = await send_ton_message(text)
+    logging.info("Send first message")
+    scheduler.add_job(update_currency, "interval", minutes=15)
+
+
+async def update_currency():
+    global msg
+    new_text = await Parser().runner()
     try:
-        await message.edit_caption(new_message)
+        await msg.delete()
+        msg = await send_ton_message(new_text)
         logging.info("Text has be changed")
-    except MessageNotModified:
-        logging.info("The same text")
+    except Exception as e:
+        logging.info(e)
 
 
 if __name__ == '__main__':

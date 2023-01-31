@@ -8,13 +8,7 @@ graphs = {
     "no_changes": "▸"
 }
 
-emoji_change = {
-    "no_changes": "⏹",
-    "up": "⬆️",
-    "down": "⬇️",
-}
-
-string_scheme = """{emoji_change} {name}: {value_ton} Ton / ${value_dollar} | {graph} {percent_change}%
+string_scheme = """{name}: {value_ton} Ton / ${value_dollar} | {graph}
       ┗━ 📊 24h: {day_in_ton} TON\n"""
 
 
@@ -27,7 +21,7 @@ class Parser:
         async with aiohttp.ClientSession() as session:
             async with session.get(self.ton_rate_url) as response:
                 ton_rate = await response.json()
-        dollar_price = round(ton_price * ton_rate["USD"], 8)
+        dollar_price = round(ton_price * ton_rate["USD"], 5)
         return dollar_price
 
     async def get_data(self):
@@ -46,12 +40,6 @@ class Parser:
             json.dump(config, json_file)
 
     async def message_scheme(self, **kwargs):
-        if kwargs['old_last_price'] == kwargs['new_last_price']:
-            emoji_change_1 = emoji_change['no_changes']
-        elif kwargs['old_last_price'] > kwargs['new_last_price']:
-            emoji_change_1 = emoji_change['down']
-        elif kwargs['old_last_price'] < kwargs['new_last_price']:
-            emoji_change_1 = emoji_change['up']
         if kwargs['old_quote_volume'] == kwargs['new_quote_volume']:
             emoji_change_2 = graphs['no_changes']
         elif kwargs['old_quote_volume'] > kwargs['new_quote_volume']:
@@ -60,13 +48,10 @@ class Parser:
             emoji_change_2 = graphs['up']
 
         coin_string = string_scheme.format(
-            emoji_change=emoji_change_1,
             name=kwargs['name'],
             value_ton=kwargs['new_last_price'],
             value_dollar=kwargs['new_dollar'],
             graph=emoji_change_2,
-            percent_change=round(
-                ((kwargs['new_last_price'] - kwargs['old_last_price']) / kwargs['old_last_price']) * 100, 3),
             day_in_ton=kwargs['new_quote_volume']
         )
         return coin_string
@@ -84,6 +69,8 @@ class Parser:
             old_last_price = coin['last_price']
             old_quote_volume = coin['quote_volume']
             new_last_price = round(float(api_address_data['last_price']), 8)
+            if new_last_price > 0.001:
+                new_last_price = round(float(api_address_data['last_price']), 5)
             new_quote_volume = round(float(api_address_data['quote_volume']), 8)
             new_dollar = await self.ton_to_dollar(new_last_price)
             message += await self.message_scheme(name=coin["name"], new_last_price=new_last_price,
