@@ -16,22 +16,17 @@ dp = Dispatcher(bot)
 scheduler = AsyncIOScheduler()
 
 
-async def send_ton_message(text: str) -> Message:
-    with open("standard.gif", 'rb') as gif_file:
-        msg = await bot.send_animation(
-            TG_CHAT,
-            gif_file,
-            caption=text
-        )
-    return msg
-
-
 async def main(dp: Dispatcher):
     global msg
     text = await Parser().runner()
-    msg = await send_ton_message(text)
+    with open("standard.gif", 'rb') as gif_file:
+        await bot.send_animation(
+            TG_CHAT,
+            gif_file,
+        )
+    msg = await bot.send_message(TG_CHAT, text=text)
     logging.info("Send first message")
-    scheduler.add_job(update_currency, "interval", minutes=15)
+    scheduler.add_job(update_currency, "interval", seconds=15)
 
 
 async def update_currency():
@@ -39,8 +34,8 @@ async def update_currency():
     new_text = await Parser().runner()
     try:
         await msg.delete()
-        msg = await send_ton_message(new_text)
-        logging.info("Text has be changed")
+        msg = await bot.send_message(TG_CHAT, text=new_text)
+        logging.info("Sent new message")
     except Exception as e:
         logging.info(e)
 
