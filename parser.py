@@ -21,7 +21,7 @@ class Parser:
         async with aiohttp.ClientSession() as session:
             async with session.get(self.ton_rate_url) as response:
                 ton_rate = await response.json()
-        dollar_price = round(ton_price * ton_rate["USD"], 5)
+        dollar_price = round(ton_price * ton_rate["USD"], 8)
         return dollar_price
 
     async def get_data(self):
@@ -49,8 +49,9 @@ class Parser:
 
         coin_string = string_scheme.format(
             name=kwargs['name'],
-            value_ton=kwargs['new_last_price'],
-            value_dollar=kwargs['new_dollar'],
+            # value_ton=kwargs['new_last_price'],
+            value_ton='{:.8f}'.format(kwargs['new_last_price']).rstrip('0').rstrip('.'),
+            value_dollar='{:.8f}'.format(kwargs['new_dollar']).rstrip('0').rstrip('.'),
             graph=emoji_change_2,
             day_in_ton=kwargs['new_quote_volume']
         )
@@ -64,21 +65,30 @@ class Parser:
         config_data = await self.read_config()
         for coin in config_data["addresses"]:
             address = coin['address']
-            api_address_data = api_data[address]
+            try:
+                api_address_data = api_data[address]
 
-            old_last_price = coin['last_price']
-            old_quote_volume = coin['quote_volume']
-            new_last_price = round(float(api_address_data['last_price']), 8)
-            if new_last_price > 0.001:
-                new_last_price = round(float(api_address_data['last_price']), 5)
-            new_quote_volume = round(float(api_address_data['quote_volume']), 8)
-            new_dollar = await self.ton_to_dollar(new_last_price)
-            message += await self.message_scheme(name=coin["name"], new_last_price=new_last_price,
-                                                 old_last_price=old_last_price, new_dollar=new_dollar,
-                                                 old_quote_volume=old_quote_volume,
-                                                 new_quote_volume=new_quote_volume)
-            coin['last_price'] = new_last_price
-            coin['quote_volume'] = new_quote_volume
+                old_last_price = coin['last_price']
+                old_quote_volume = coin['quote_volume']
+                new_last_price = float(api_address_data['last_price'])
+                # new_last_price = float(format(float(api_address_data['last_price']), 'f'))
+                new_last_price = round(float(api_address_data['last_price']), 8)
+                if new_last_price > 0.001:
+                    new_last_price = round(float(api_address_data['last_price']), 5)
+                new_quote_volume = round(float(api_address_data['quote_volume']), 8)
+                new_dollar = await self.ton_to_dollar(new_last_price)
+                if new_dollar > 0.001:
+                    new_dollar = round(float(new_dollar), 5)
+                message += await self.message_scheme(name=coin["name"], new_last_price=new_last_price,
+                                                     old_last_price=old_last_price, new_dollar=new_dollar,
+                                                     old_quote_volume=old_quote_volume,
+                                                     new_quote_volume=new_quote_volume)
+                coin['last_price'] = new_last_price
+                coin['quote_volume'] = new_quote_volume
+            except:
+                print(f'No {address} in api')
+        if message == '':
+            message = 'error'
         await self.save_config(config_data)
         return message
 
